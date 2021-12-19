@@ -35,9 +35,9 @@ func Get() (*Config, error) {
 	err := Load(prefix, &res)
 	if err == nil {
 		if len(res.Redis.Address) == 0 {
-			err = fmt.Errorf("REDIS_ADDRESS has to be set")
+			err = fmt.Errorf("ARC_REDIS_ADDRESS has to be set")
 		} else if len(res.Arp.Interface) == 0 {
-			err = fmt.Errorf("ARP_INTERFACE has to be set")
+			err = fmt.Errorf("ARC_ARP_INTERFACE has to be set")
 		} else {
 			return &res, nil
 		}
