@@ -2,6 +2,7 @@ package collector
 
 import (
 	"bufio"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -13,7 +14,49 @@ import (
 	"github.com/kwitsch/docker-ArpRedisCollector/config"
 )
 
-func GetConfig(cfg *config.ArpConfig) (*arp.Config, error) {
+type Collector struct {
+	cfg        *config.ArpConfig
+	handler    *arp.Handler
+	ctx        context.Context
+	cancel     context.CancelFunc
+	ArpChannel chan arp.MACEntry
+}
+
+func New(cfg *config.ArpConfig) (*Collector, error) {
+	acfg, err := getConfig(cfg)
+	if err == nil {
+		var handler *arp.Handler
+		handler, err = arp.New(*acfg)
+		if err == nil {
+			ctx, cancel := context.WithCancel(context.Background())
+			arpChannel := make(chan arp.MACEntry, 16)
+			res := &Collector{
+				cfg:        cfg,
+				handler:    handler,
+				ctx:        ctx,
+				cancel:     cancel,
+				ArpChannel: arpChannel,
+			}
+
+			go res.handler.ListenAndServe(res.ctx)
+
+			res.handler.AddNotificationChannel(res.ArpChannel)
+
+			return res, nil
+		}
+	}
+	return nil, err
+}
+
+func (c *Collector) Close() {
+	c.cancel()
+
+	c.handler.Close()
+
+	close(c.ArpChannel)
+}
+
+func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
 	iface, err := net.InterfaceByName(cfg.Interface)
 	if err == nil {
 		homeNet := getHomeNet(iface)
