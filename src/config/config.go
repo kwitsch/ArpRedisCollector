@@ -1,12 +1,10 @@
 package config
 
 import (
-	"strings"
+	"fmt"
 	"time"
 
-	"github.com/creasty/defaults"
-	"github.com/knadh/koanf"
-	"github.com/knadh/koanf/providers/env"
+	. "github.com/kwitsch/go-dockerutils/config"
 )
 
 type Config struct {
@@ -32,18 +30,16 @@ type ArpConfig struct {
 
 const prefix = "ARC_"
 
-func Load() (*Config, error) {
-	var result Config
-	err := defaults.Set(&result)
+func Get() (*Config, error) {
+	var res Config
+	err := Load(prefix, &res)
 	if err == nil {
-		var k = koanf.New(".")
-		k.Load(env.Provider(prefix, ".", func(s string) string {
-			return strings.Replace(strings.ToLower(
-				strings.TrimPrefix(s, prefix)), "_", ".", -1)
-		}), nil)
-		err = k.UnmarshalWithConf("", &result, koanf.UnmarshalConf{Tag: "koanf"})
-		if err == nil {
-			return &result, nil
+		if len(res.Redis.Address) == 0 {
+			err = fmt.Errorf("REDIS_ADDRESS has to be set")
+		} else if len(res.Arp.Interface) == 0 {
+			err = fmt.Errorf("ARP_INTERFACE has to be set")
+		} else {
+			return &res, nil
 		}
 	}
 	return nil, err

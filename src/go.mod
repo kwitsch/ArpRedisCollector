@@ -2,12 +2,14 @@ module github.com/kwitsch/docker-ArpRedisCollector
 
 go 1.17
 
-require github.com/knadh/koanf v1.3.3
+require github.com/knadh/koanf v1.3.3 // indirect
+
+require github.com/kwitsch/go-dockerutils v0.0.9
 
 require github.com/mitchellh/mapstructure v1.4.3 // indirect
 
 require (
-	github.com/creasty/defaults v1.5.2
+	github.com/creasty/defaults v1.5.2 // indirect
 	github.com/irai/arp v1.4.0
 	github.com/mdlayher/arp v0.0.0-20191213142603-f72070a231fc // indirect
 	github.com/mdlayher/ethernet v0.0.0-20190606142754-0394541c37b7 // indirect
