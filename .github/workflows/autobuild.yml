@@ -1,8 +1,7 @@
-name: Main autobuild
+name: autobuild
 
 on:
   push:
-    branches: [ main ]
 
 env:
   IMAGE: arprediscollector
@@ -25,7 +24,9 @@ jobs:
         with:
           images: ghcr.io/kwitsch/${{ env.IMAGE }}
           tags: |
-            type=edge,branch=main
+            type=edge,branch=development
+            type=ref,event=tag
+            type=raw,value=latest,event=tag
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v1
