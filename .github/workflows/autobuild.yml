@@ -2,6 +2,7 @@ name: autobuild
 
 on:
   push:
+  
 
 env:
   IMAGE: arprediscollector
@@ -25,6 +26,7 @@ jobs:
           images: ghcr.io/kwitsch/${{ env.IMAGE }}
           tags: |
             type=edge,branch=development
+            type=ref,branch=main
             type=ref,event=tag
       -
         name: Set up QEMU
