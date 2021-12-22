@@ -8,6 +8,8 @@ import (
 	"github.com/kwitsch/ArpRedisCollector/collector"
 	"github.com/kwitsch/ArpRedisCollector/config"
 	"github.com/kwitsch/ArpRedisCollector/redis"
+
+	_ "github.com/kwitsch/go-dockerutils"
 )
 
 func main() {
