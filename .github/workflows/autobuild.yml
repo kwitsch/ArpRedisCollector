@@ -2,6 +2,10 @@ name: autobuild
 
 on:
   push:
+   branches:
+    - development
+   tags:
+    - v*
   
 
 env:
@@ -26,7 +30,6 @@ jobs:
           images: ghcr.io/kwitsch/${{ env.IMAGE }}
           tags: |
             type=edge,branch=development
-            type=ref,branch=main
             type=ref,event=tag
       -
         name: Set up QEMU
