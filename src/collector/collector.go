@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/irai/arp"
-	"github.com/kwitsch/docker-ArpRedisCollector/config"
+	"github.com/kwitsch/ArpRedisCollector/config"
 )
 
 type Collector struct {

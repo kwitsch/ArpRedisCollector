@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/kwitsch/docker-ArpRedisCollector/collector"
-	"github.com/kwitsch/docker-ArpRedisCollector/config"
+	"github.com/kwitsch/ArpRedisCollector/collector"
+	"github.com/kwitsch/ArpRedisCollector/config"
 )
 
 func main() {
