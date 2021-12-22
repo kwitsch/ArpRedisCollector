@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -14,9 +15,10 @@ type Client struct {
 	client *redis.Client
 	ctx    context.Context
 	cancel context.CancelFunc
+	ttl    time.Duration
 }
 
-func New(cfg *config.RedisConfig) (*Client, error) {
+func New(cfg *config.RedisConfig, ttl time.Duration) (*Client, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:            cfg.Address,
 		Username:        cfg.Username,
@@ -46,5 +48,11 @@ func (c *Client) Close() {
 }
 
 func (c *Client) Publish(entry *arp.MACEntry) {
+	fmt.Println(entry.String())
+	if entry.Online {
+		c.client.Set(c.ctx, entry.MAC.String(), entry.IP().String(), c.ttl)
+	} else {
+		c.client.Del(c.ctx, entry.MAC.String())
+	}
 
 }
