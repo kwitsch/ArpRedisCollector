@@ -62,15 +62,14 @@ func (c *Collector) Close() {
 	close(c.ArpChannel)
 }
 
-func (c *Collector) ScanNetwork() {
-	fmt.Println("ScanNetwork:", c.network)
-	err := c.handler.ScanNetwork(c.ctx, *c.network)
-	if err == nil {
-		for _, entry := range c.handler.GetTable() {
-			c.ArpChannel <- entry
-		}
-	} else {
-		fmt.Println("ScanNetwork error:", err)
+func (c *Collector) PublishTable() {
+	if c.cfg.Verbose {
+		fmt.Println("Collector.PublishTable")
+		c.handler.PrintTable()
+	}
+
+	for _, entry := range c.handler.GetTable() {
+		c.ArpChannel <- entry
 	}
 }
 
