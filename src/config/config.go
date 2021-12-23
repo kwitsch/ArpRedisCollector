@@ -27,6 +27,7 @@ type ArpConfig struct {
 	ProbeInterval           time.Duration `koanf:"probeInterval" default:"1m"`
 	FullNetworkScanInterval time.Duration `koanf:"fullNetworkScanInterval" default:"10m"`
 	OfflineDeadline         time.Duration `koanf:"offlineDeadline" default:"5m"`
+	Verbose                 bool          `koanf:"verbose" default:"false"`
 }
 
 const prefix = "ARC_"

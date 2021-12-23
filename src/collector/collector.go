@@ -26,7 +26,10 @@ type Collector struct {
 func New(cfg *config.ArpConfig) (*Collector, error) {
 	acfg, err := getConfig(cfg)
 	if err == nil {
-		arp.Debug = true
+		if cfg.Verbose {
+			arp.Debug = true
+		}
+
 		var handler *arp.Handler
 		handler, err = arp.New(*acfg)
 		if err == nil {
