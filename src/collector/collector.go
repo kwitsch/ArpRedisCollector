@@ -59,6 +59,7 @@ func (c *Collector) Close() {
 }
 
 func (c *Collector) NetScan() {
+	fmt.Println("NetScan for", c.acfg.HomeLAN.Network())
 	err := c.handler.ScanNetwork(c.ctx, c.acfg.HomeLAN)
 	if err != nil {
 		fmt.Println("NetScan error:", err)
