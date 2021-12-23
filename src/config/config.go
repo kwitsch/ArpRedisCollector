@@ -19,11 +19,12 @@ type RedisConfig struct {
 	Database           int           `koanf:"database" default:"0"`
 	ConnectionAttempts int           `koanf:"connectionAttempts" default:"3"`
 	ConnectionCooldown time.Duration `koanf:"connectionCooldown" default:"1s"`
+	TTL                time.Duration `koanf:"ttl" default:"5m"`
 }
 
 type ArpConfig struct {
 	Interface               string        `koanf:"interface" default:"eth0"`
-	ProbeInterval           time.Duration `koanf:"probeInterval" default:"20s"`
+	ProbeInterval           time.Duration `koanf:"probeInterval" default:"30s"`
 	FullNetworkScanInterval time.Duration `koanf:"fullNetworkScanInterval" default:"10m"`
 	OfflineDeadline         time.Duration `koanf:"offlineDeadline" default:"5m"`
 }
