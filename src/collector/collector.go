@@ -9,9 +9,16 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/irai/arp"
 	"github.com/kwitsch/ArpRedisCollector/config"
+)
+
+const (
+	probeInterval           time.Duration = time.Duration(1 * time.Minute)
+	fullNetworkScanInterval time.Duration = time.Duration(10 * time.Minute)
+	offlineDeadline         time.Duration = time.Duration(5 * time.Minute)
 )
 
 type Collector struct {
@@ -87,9 +94,9 @@ func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
 					HostIP:                  homeNet.IP.To4(),
 					RouterIP:                gateway,
 					HomeLAN:                 *homeNet,
-					ProbeInterval:           cfg.ProbeInterval,
-					FullNetworkScanInterval: cfg.FullNetworkScanInterval,
-					OfflineDeadline:         cfg.OfflineDeadline,
+					ProbeInterval:           probeInterval,
+					FullNetworkScanInterval: fullNetworkScanInterval,
+					OfflineDeadline:         offlineDeadline,
 				}
 				return res, nil
 			}

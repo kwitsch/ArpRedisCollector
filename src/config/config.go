@@ -23,11 +23,8 @@ type RedisConfig struct {
 }
 
 type ArpConfig struct {
-	Interface               string        `koanf:"interface" default:"eth0"`
-	ProbeInterval           time.Duration `koanf:"probeInterval" default:"1m"`
-	FullNetworkScanInterval time.Duration `koanf:"fullNetworkScanInterval" default:"10m"`
-	OfflineDeadline         time.Duration `koanf:"offlineDeadline" default:"5m"`
-	Verbose                 bool          `koanf:"verbose" default:"false"`
+	Interface string `koanf:"interface" default:"eth0"`
+	Verbose   bool   `koanf:"verbose" default:"false"`
 }
 
 const prefix = "ARC_"
