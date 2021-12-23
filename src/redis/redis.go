@@ -36,6 +36,7 @@ func New(cfg *config.RedisConfig, ttl time.Duration) (*Client, error) {
 			client: rdb,
 			ctx:    ctx,
 			cancel: cancel,
+			ttl:    ttl,
 		}
 		return res, nil
 	}
