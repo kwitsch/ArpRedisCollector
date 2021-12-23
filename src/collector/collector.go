@@ -26,6 +26,7 @@ type Collector struct {
 func New(cfg *config.ArpConfig) (*Collector, error) {
 	acfg, err := getConfig(cfg)
 	if err == nil {
+		arp.Debug = true
 		var handler *arp.Handler
 		handler, err = arp.New(*acfg)
 		if err == nil {
@@ -60,27 +61,14 @@ func (c *Collector) Close() {
 
 func (c *Collector) ScanNetwork() {
 	fmt.Println("ScanNetwork:", c.network)
-	for _, ip := range getAllIps(c.network) {
-		err := c.handler.Probe(ip)
-		if err != nil {
-			fmt.Println("ScanNetwork error:", err)
+	err := c.handler.ScanNetwork(c.ctx, *c.network)
+	if err == nil {
+		for _, entry := range c.handler.GetTable() {
+			c.ArpChannel <- entry
 		}
+	} else {
+		fmt.Println("ScanNetwork error:", err)
 	}
-}
-
-func getAllIps(ipv4Net *net.IPNet) []net.IP {
-	res := make([]net.IP, 0)
-	mask := binary.BigEndian.Uint32(ipv4Net.Mask)
-	start := binary.BigEndian.Uint32(ipv4Net.IP)
-	finish := (start & mask) | (mask ^ 0xffffffff)
-
-	for i := start + 1; i < finish; i++ {
-		ip := make(net.IP, 4)
-		binary.BigEndian.PutUint32(ip, i)
-		res = append(res, ip)
-	}
-
-	return res
 }
 
 func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
