@@ -68,7 +68,7 @@ func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
 			var gateway net.IP
 			gateway, err = getDefaultGateway(cfg.Interface)
 			if err == nil {
-				return &arp.Config{
+				res := &arp.Config{
 					NIC:                     iface.Name,
 					HostMAC:                 iface.HardwareAddr,
 					HostIP:                  homeNet.IP.To4(),
@@ -78,7 +78,9 @@ func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
 					FullNetworkScanInterval: cfg.FullNetworkScanInterval,
 					OfflineDeadline:         cfg.OfflineDeadline,
 					PurgeDeadline:           cfg.OfflineDeadline * 2,
-				}, nil
+				}
+				fmt.Println(res.String())
+				return res, nil
 			}
 		} else {
 			err = fmt.Errorf("%s has no valid IPv4 address", cfg.Interface)
