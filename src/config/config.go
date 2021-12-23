@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	Redis   RedisConfig `koanf:"redis"`
-	Arp     ArpConfig   `koanf:"arp"`
-	Verbose bool        `koanf:"verbose" default:"false"`
+	Redis   RedisConfig    `koanf:"redis"`
+	Verbose bool           `koanf:"verbose" default:"false"`
+	nets    map[int]string `koanf:"subnet"`
+	Subnets []string
 }
 
 type RedisConfig struct {
@@ -23,10 +24,6 @@ type RedisConfig struct {
 	TTL                time.Duration `koanf:"ttl" default:"20m"`
 }
 
-type ArpConfig struct {
-	Interface string `koanf:"interface" default:"eth0"`
-}
-
 const prefix = "ARC_"
 
 func Get() (*Config, error) {
@@ -36,7 +33,16 @@ func Get() (*Config, error) {
 		if len(res.Redis.Address) == 0 {
 			err = fmt.Errorf("ARC_REDIS_ADDRESS has to be set")
 		} else {
-			return &res, nil
+			if len(res.nets) > 0 {
+				sub := make([]string, len(res.nets))
+				for _, s := range res.nets {
+					sub = append(sub, s)
+				}
+				res.Subnets = sub
+				return &res, nil
+			} else {
+				err = fmt.Errorf("No subnet set")
+			}
 		}
 	}
 	return nil, err
