@@ -2,12 +2,11 @@ package collector
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"time"
 
 	"github.com/irai/arp"
-	"github.com/kwitsch/ArpRedisCollector/config"
+	"github.com/kwitsch/ArpRedisCollector/models"
 	arcnet "github.com/kwitsch/ArpRedisCollector/net"
 )
 
@@ -17,6 +16,90 @@ const (
 	offlineDeadline         time.Duration = time.Duration(5 * time.Minute)
 )
 
+type Collector struct {
+	verbose     bool
+	ctx         context.Context
+	cancel      context.CancelFunc
+	nethandlers []*NetHandler
+	intChan     chan arp.MACEntry
+	ArpChannel  chan *models.CacheMessage
+}
+
+type NetHandler struct {
+	handler *arp.Handler
+	ifNet   *models.IfNetPack
+}
+
+func New(subnets []*net.IPMask, verbose bool) (*Collector, error) {
+	if verbose {
+		arp.Debug = true
+	}
+
+	nets, err := arcnet.GetFilteredLocalNets(subnets)
+	if err == nil {
+		var handlers []*NetHandler
+		handlers, err = getAllHandlers(nets)
+		if err == nil {
+			ctx, cancel := context.WithCancel(context.Background())
+
+			res := &Collector{
+				verbose:     verbose,
+				ctx:         ctx,
+				cancel:      cancel,
+				nethandlers: handlers,
+				intChan:     make(chan arp.MACEntry, 256),
+				ArpChannel:  make(chan *models.CacheMessage, 256),
+			}
+
+			return res, nil
+		}
+	}
+	return nil, err
+}
+
+func (c *Collector) Close() {
+
+}
+
+func getAllHandlers(nps []*models.IfNetPack) ([]*NetHandler, error) {
+	res := make([]*NetHandler, 0)
+	for _, np := range nps {
+		h, err := getHandler(np)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, h)
+	}
+	return res, nil
+}
+
+func getHandler(np *models.IfNetPack) (*NetHandler, error) {
+	cfg := arp.Config{
+		NIC:                     np.Interface.Name,
+		HostMAC:                 np.Interface.HardwareAddr,
+		HostIP:                  np.Network.IP.To4(),
+		RouterIP:                *np.Gateway,
+		HomeLAN:                 *np.Network,
+		ProbeInterval:           probeInterval,
+		FullNetworkScanInterval: fullNetworkScanInterval,
+		OfflineDeadline:         offlineDeadline,
+	}
+
+	handler, err := arp.New(cfg)
+	if err == nil {
+		res := &NetHandler{
+			handler: handler,
+			ifNet:   np,
+		}
+
+		return res, nil
+	}
+
+	return nil, err
+}
+
+/*
 type Collector struct {
 	cfg        *config.ArpConfig
 	verbose    bool
@@ -103,4 +186,4 @@ func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
 		}
 	}
 	return nil, err
-}
+}*/

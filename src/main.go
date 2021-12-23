@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/kwitsch/ArpRedisCollector/collector"
 	"github.com/kwitsch/ArpRedisCollector/config"
@@ -18,20 +17,17 @@ func main() {
 	if cErr == nil {
 		redis, rErr := redis.New(&cfg.Redis)
 		if rErr == nil {
-			arp, aErr := collector.New(&cfg.Arp, cfg.Verbose)
+			arp, aErr := collector.New(cfg.Subnets, cfg.Verbose)
 			if aErr == nil {
 				fmt.Println("Collector start")
 
 				intChan := make(chan os.Signal, 1)
 				signal.Notify(intChan, os.Interrupt)
 
-				ticker := time.NewTicker(cfg.Arp.FullNetworkScanInterval).C
 				for {
 					select {
 					case a := <-arp.ArpChannel:
-						redis.Publish(&a)
-					case <-ticker:
-						arp.PublishTable()
+						redis.Publish(a)
 					case <-intChan:
 						fmt.Println("Collector stopping")
 						arp.Close()
