@@ -22,7 +22,7 @@ type RedisConfig struct {
 }
 
 type ArpConfig struct {
-	Interface               string        `koanf:"interface"`
+	Interface               string        `koanf:"interface" default:"eth0"`
 	ProbeInterval           time.Duration `koanf:"probeInterval" default:"1m"`
 	FullNetworkScanInterval time.Duration `koanf:"fullNetworkScanInterval" default:"20m"`
 	PurgeDeadline           time.Duration `koanf:"purgeDeadline" default:"10m"`
@@ -36,8 +36,6 @@ func Get() (*Config, error) {
 	if err == nil {
 		if len(res.Redis.Address) == 0 {
 			err = fmt.Errorf("ARC_REDIS_ADDRESS has to be set")
-		} else if len(res.Arp.Interface) == 0 {
-			err = fmt.Errorf("ARC_ARP_INTERFACE has to be set")
 		} else {
 			return &res, nil
 		}
