@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	Redis RedisConfig `koanf:"redis"`
-	Arp   ArpConfig   `koanf:"arp"`
+	Redis   RedisConfig `koanf:"redis"`
+	Arp     ArpConfig   `koanf:"arp"`
+	Verbose bool        `koanf:"verbose" default:"false"`
 }
 
 type RedisConfig struct {
@@ -24,7 +25,6 @@ type RedisConfig struct {
 
 type ArpConfig struct {
 	Interface string `koanf:"interface" default:"eth0"`
-	Verbose   bool   `koanf:"verbose" default:"false"`
 }
 
 const prefix = "ARC_"

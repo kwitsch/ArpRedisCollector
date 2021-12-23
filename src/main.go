@@ -18,7 +18,7 @@ func main() {
 	if cErr == nil {
 		redis, rErr := redis.New(&cfg.Redis)
 		if rErr == nil {
-			arp, aErr := collector.New(&cfg.Arp)
+			arp, aErr := collector.New(&cfg.Arp, cfg.Verbose)
 			if aErr == nil {
 				fmt.Println("Collector start")
 

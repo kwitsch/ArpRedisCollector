@@ -19,17 +19,18 @@ const (
 
 type Collector struct {
 	cfg        *config.ArpConfig
-	handler    *arp.Handler
+	verbose    bool
 	ctx        context.Context
 	cancel     context.CancelFunc
+	handler    *arp.Handler
 	network    *net.IPNet
 	ArpChannel chan arp.MACEntry
 }
 
-func New(cfg *config.ArpConfig) (*Collector, error) {
+func New(cfg *config.ArpConfig, verbose bool) (*Collector, error) {
 	acfg, err := getConfig(cfg)
 	if err == nil {
-		if cfg.Verbose {
+		if verbose {
 			arp.Debug = true
 		}
 
@@ -40,9 +41,10 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 			arpChannel := make(chan arp.MACEntry, 256)
 			res := &Collector{
 				cfg:        cfg,
-				handler:    handler,
+				verbose:    verbose,
 				ctx:        ctx,
 				cancel:     cancel,
+				handler:    handler,
 				network:    &acfg.HomeLAN,
 				ArpChannel: arpChannel,
 			}
@@ -66,7 +68,7 @@ func (c *Collector) Close() {
 }
 
 func (c *Collector) PublishTable() {
-	if c.cfg.Verbose {
+	if c.verbose {
 		fmt.Println("Collector.PublishTable")
 		c.handler.PrintTable()
 	}
