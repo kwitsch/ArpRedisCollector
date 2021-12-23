@@ -22,6 +22,7 @@ func main() {
 				fmt.Println("Collector start")
 				intChan := make(chan os.Signal, 1)
 				signal.Notify(intChan, os.Interrupt)
+				go arp.ScanNetwork()
 				for {
 					select {
 					case a := <-arp.ArpChannel:

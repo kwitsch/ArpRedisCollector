@@ -19,6 +19,7 @@ type Collector struct {
 	handler    *arp.Handler
 	ctx        context.Context
 	cancel     context.CancelFunc
+	network    *net.IPNet
 	ArpChannel chan arp.MACEntry
 }
 
@@ -35,6 +36,7 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 				handler:    handler,
 				ctx:        ctx,
 				cancel:     cancel,
+				network:    &acfg.HomeLAN,
 				ArpChannel: arpChannel,
 			}
 
@@ -42,11 +44,7 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 
 			res.handler.AddNotificationChannel(res.ArpChannel)
 
-			err = res.handler.ScanNetwork(res.ctx, acfg.HomeLAN)
-
-			if err == nil {
-				return res, nil
-			}
+			return res, nil
 		}
 	}
 	return nil, err
@@ -58,6 +56,18 @@ func (c *Collector) Close() {
 	c.handler.Close()
 
 	close(c.ArpChannel)
+}
+
+func (c *Collector) ScanNetwork() {
+	fmt.Println("ScanNetwork:", c.network)
+	err := c.handler.ScanNetwork(c.ctx, *c.network)
+	if err == nil {
+		for _, entry := range c.handler.GetTable() {
+			c.ArpChannel <- entry
+		}
+	} else {
+		fmt.Println("ScanNetwork error:", err)
+	}
 }
 
 func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
@@ -79,7 +89,6 @@ func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
 					OfflineDeadline:         cfg.OfflineDeadline,
 					PurgeDeadline:           cfg.OfflineDeadline * 2,
 				}
-				fmt.Println(res.String())
 				return res, nil
 			}
 		} else {
