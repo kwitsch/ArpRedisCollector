@@ -48,8 +48,5 @@ func (c *Client) Close() {
 func (c *Client) Publish(entry *arp.MACEntry) {
 	if entry.Online {
 		c.client.Set(c.ctx, entry.MAC.String(), entry.IP().String(), c.cfg.TTL)
-	} else {
-		c.client.Del(c.ctx, entry.MAC.String())
 	}
-
 }
