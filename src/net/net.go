@@ -2,6 +2,7 @@ package net
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -37,6 +38,26 @@ func GetAllLocalNets() ([]*models.IfNetPack, error) {
 
 				}
 			}
+		}
+	}
+	return res, err
+}
+
+func GetFilteredLocalNets(filters []*net.IPMask) ([]*models.IfNetPack, error) {
+	res := make([]*models.IfNetPack, 0)
+	nets, err := GetAllLocalNets()
+	if err == nil {
+		if len(nets) > 0 {
+			for _, net := range nets {
+				for _, f := range filters {
+					if bytes.Compare(net.Network.Mask, *f) == 0 {
+						res = append(res, net)
+					}
+				}
+			}
+		}
+		if len(res) == 0 {
+			err = fmt.Errorf("No matching local net found")
 		}
 	}
 	return res, err
