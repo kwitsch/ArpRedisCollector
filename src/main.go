@@ -15,14 +15,13 @@ import (
 func main() {
 	cfg, cErr := config.Get()
 	if cErr == nil {
-		redis, rErr := redis.New(&cfg.Redis, cfg.Arp.PurgeDeadline)
+		redis, rErr := redis.New(&cfg.Redis, cfg.Arp.OfflineDeadline)
 		if rErr == nil {
 			arp, aErr := collector.New(&cfg.Arp)
 			if aErr == nil {
 				fmt.Println("Collector start")
 				intChan := make(chan os.Signal, 1)
 				signal.Notify(intChan, os.Interrupt)
-				go arp.NetScan()
 				for {
 					select {
 					case a := <-arp.ArpChannel:

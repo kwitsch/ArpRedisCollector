@@ -16,7 +16,6 @@ import (
 
 type Collector struct {
 	cfg        *config.ArpConfig
-	acfg       *arp.Config
 	handler    *arp.Handler
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -33,7 +32,6 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 			arpChannel := make(chan arp.MACEntry, 256)
 			res := &Collector{
 				cfg:        cfg,
-				acfg:       acfg,
 				handler:    handler,
 				ctx:        ctx,
 				cancel:     cancel,
@@ -44,7 +42,11 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 
 			res.handler.AddNotificationChannel(res.ArpChannel)
 
-			return res, nil
+			err = res.handler.ScanNetwork(res.ctx, acfg.HomeLAN)
+
+			if err == nil {
+				return res, nil
+			}
 		}
 	}
 	return nil, err
@@ -56,14 +58,6 @@ func (c *Collector) Close() {
 	c.handler.Close()
 
 	close(c.ArpChannel)
-}
-
-func (c *Collector) NetScan() {
-	fmt.Println("NetScan for", c.acfg.HomeLAN.Network())
-	err := c.handler.ScanNetwork(c.ctx, c.acfg.HomeLAN)
-	if err != nil {
-		fmt.Println("NetScan error:", err)
-	}
 }
 
 func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
