@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/irai/arp"
 	"github.com/kwitsch/ArpRedisCollector/config"
+	"github.com/kwitsch/ArpRedisCollector/models"
 )
+
+const noTTL time.Duration = time.Duration(0)
 
 type Client struct {
 	cfg    *config.RedisConfig
@@ -16,6 +18,7 @@ type Client struct {
 	cancel context.CancelFunc
 }
 
+// New creates a new redis client
 func New(cfg *config.RedisConfig) (*Client, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:            cfg.Address,
@@ -41,12 +44,20 @@ func New(cfg *config.RedisConfig) (*Client, error) {
 	return nil, err
 }
 
+// Close discards the redis client
 func (c *Client) Close() {
 	c.cancel()
 }
 
-func (c *Client) Publish(entry *arp.MACEntry) {
-	if entry.Online {
-		c.client.Set(c.ctx, entry.MAC.String(), entry.IP().String(), c.cfg.TTL)
+// Publish stores a MACEntry in redis
+func (c *Client) Publish(cm *models.CacheMessage) {
+	if cm.Entry.Online {
+		ttl := c.cfg.TTL
+
+		if cm.Static {
+			ttl = noTTL
+		}
+
+		c.client.Set(c.ctx, cm.Entry.MAC.String(), cm.Entry.IP().String(), ttl)
 	}
 }
