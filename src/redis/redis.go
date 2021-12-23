@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -49,7 +48,6 @@ func (c *Client) Close() {
 }
 
 func (c *Client) Publish(entry *arp.MACEntry) {
-	fmt.Println(entry.String())
 	if entry.Online {
 		c.client.Set(c.ctx, entry.MAC.String(), entry.IP().String(), c.ttl)
 	} else {
