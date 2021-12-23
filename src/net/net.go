@@ -8,7 +8,39 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/kwitsch/ArpRedisCollector/models"
 )
+
+func GetAllLocalNets() ([]*models.IfNetPack, error) {
+	res := make([]*models.IfNetPack, 0)
+	ifaces, err := net.Interfaces()
+	if err == nil {
+		for _, i := range ifaces {
+			addrs, ierr := i.Addrs()
+			if ierr == nil {
+				for _, a := range addrs {
+					switch v := a.(type) {
+					case *net.IPNet:
+						if strings.Count(v.String(), ":") < 2 && !v.IP.IsLoopback() {
+							gw, gErr := GetDefaultGateway(i.Name)
+							if gErr == nil {
+								aRes := &models.IfNetPack{
+									Interface: &i,
+									Network:   v,
+									Gateway:   &gw,
+								}
+								res = append(res, aRes)
+							}
+						}
+					}
+
+				}
+			}
+		}
+	}
+	return res, err
+}
 
 func GetHomeNet(iface *net.Interface) *net.IPNet {
 	addrs, ierr := iface.Addrs()
