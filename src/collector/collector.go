@@ -82,7 +82,8 @@ func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
 					HomeLAN:                 *homeNet,
 					ProbeInterval:           cfg.ProbeInterval,
 					FullNetworkScanInterval: cfg.FullNetworkScanInterval,
-					PurgeDeadline:           cfg.PurgeDeadline,
+					OfflineDeadline:         cfg.OfflineDeadline,
+					PurgeDeadline:           cfg.OfflineDeadline * 2,
 				}, nil
 			}
 		} else {

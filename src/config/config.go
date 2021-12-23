@@ -23,9 +23,9 @@ type RedisConfig struct {
 
 type ArpConfig struct {
 	Interface               string        `koanf:"interface" default:"eth0"`
-	ProbeInterval           time.Duration `koanf:"probeInterval" default:"1m"`
-	FullNetworkScanInterval time.Duration `koanf:"fullNetworkScanInterval" default:"20m"`
-	PurgeDeadline           time.Duration `koanf:"purgeDeadline" default:"10m"`
+	ProbeInterval           time.Duration `koanf:"probeInterval" default:"20s"`
+	FullNetworkScanInterval time.Duration `koanf:"fullNetworkScanInterval" default:"10m"`
+	OfflineDeadline         time.Duration `koanf:"offlineDeadline" default:"5m"`
 }
 
 const prefix = "ARC_"
