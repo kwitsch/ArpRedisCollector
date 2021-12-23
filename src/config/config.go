@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	. "github.com/kwitsch/go-dockerutils/config"
@@ -11,7 +12,7 @@ type Config struct {
 	Redis   RedisConfig    `koanf:"redis"`
 	Verbose bool           `koanf:"verbose" default:"false"`
 	nets    map[int]string `koanf:"subnet"`
-	Subnets []string
+	Subnets []*net.IPMask
 }
 
 type RedisConfig struct {
@@ -34,11 +35,21 @@ func Get() (*Config, error) {
 			err = fmt.Errorf("ARC_REDIS_ADDRESS has to be set")
 		} else {
 			if len(res.nets) > 0 {
-				sub := make([]string, len(res.nets))
-				for _, s := range res.nets {
-					sub = append(sub, s)
+				smasks := make([]*net.IPMask, 0)
+
+				var snet *net.IPNet
+
+				for _, f := range res.nets {
+					_, snet, err = net.ParseCIDR(f)
+					if err == nil {
+						smasks = append(smasks, &snet.Mask)
+					} else {
+						return nil, err
+					}
 				}
-				res.Subnets = sub
+
+				res.Subnets = smasks
+
 				return &res, nil
 			} else {
 				err = fmt.Errorf("No subnet set")
