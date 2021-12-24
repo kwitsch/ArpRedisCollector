@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/irai/arp"
@@ -64,21 +65,17 @@ func (c *Collector) Start() {
 		h.handler.AddNotificationChannel(c.intChan)
 		go h.handler.ListenAndServe(c.ctx)
 		c.ArpChannel <- c.getSelfCacheMessage(h)
-
-		if m, e := c.getGatewayCacheMessage(h); e == nil {
-			c.ArpChannel <- m
-		}
 	}
 
 	go func() {
+		ticker := time.NewTicker(c.cfg.FullNetworkScanInterval).C
 		for {
 			select {
+			case <-ticker:
+				c.publishTables()
 			case m := <-c.intChan:
 				if m.Online {
-					c.ArpChannel <- &models.CacheMessage{
-						Entry:  &m,
-						Static: false,
-					}
+					c.ArpChannel <- &models.CacheMessage{Entry: &m}
 				}
 			}
 		}
@@ -103,18 +100,19 @@ func (c *Collector) getSelfCacheMessage(h *NetHandler) *models.CacheMessage {
 	return res
 }
 
-func (c *Collector) getGatewayCacheMessage(h *NetHandler) (*models.CacheMessage, error) {
-	mac, err := h.handler.WhoIs(*h.ifNet.Gateway)
-	if err == nil {
-		res := &models.CacheMessage{
-			Entry:  &mac,
-			Static: true,
-		}
-
-		return res, nil
+func (c *Collector) publishTables() {
+	if c.cfg.Verbose {
+		fmt.Println("Collector.publishTables")
 	}
-
-	return nil, err
+	for _, h := range c.nethandlers {
+		if c.cfg.Verbose {
+			h.handler.PrintTable()
+		}
+		for _, entry := range h.handler.GetTable() {
+			c.ArpChannel <- &models.CacheMessage{Entry: &entry}
+		}
+		c.ArpChannel <- c.getSelfCacheMessage(h)
+	}
 }
 
 func getAllHandlers(nps []*models.IfNetPack, cfg *config.ArpConfig) ([]*NetHandler, error) {
