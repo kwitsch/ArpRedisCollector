@@ -52,7 +52,11 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 }
 
 func (c *Collector) Close() {
-
+	for _, h := range c.nethandlers {
+		h.handler.Close()
+	}
+	close(c.intChan)
+	close(c.ArpChannel)
 }
 
 func (c *Collector) start() {
@@ -61,6 +65,20 @@ func (c *Collector) start() {
 		go h.handler.ListenAndServe(c.ctx)
 		c.ArpChannel <- c.getSelfCacheMessage(h)
 	}
+
+	go func() {
+		for {
+			select {
+			case m := <-c.intChan:
+				if m.Online {
+					c.ArpChannel <- &models.CacheMessage{
+						Entry:  &m,
+						Static: false,
+					}
+				}
+			}
+		}
+	}()
 }
 
 // getSelfCacheMessage addes a static cache entry for own MAC
