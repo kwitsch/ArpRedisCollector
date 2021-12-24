@@ -2,10 +2,10 @@ package collector
 
 import (
 	"context"
-	"net"
 	"time"
 
 	"github.com/irai/arp"
+	"github.com/kwitsch/ArpRedisCollector/config"
 	"github.com/kwitsch/ArpRedisCollector/models"
 	arcnet "github.com/kwitsch/ArpRedisCollector/net"
 )
@@ -17,7 +17,7 @@ const (
 )
 
 type Collector struct {
-	verbose     bool
+	cfg         *config.ArpConfig
 	ctx         context.Context
 	cancel      context.CancelFunc
 	nethandlers []*NetHandler
@@ -30,12 +30,12 @@ type NetHandler struct {
 	ifNet   *models.IfNetPack
 }
 
-func New(subnets []*net.IPMask, verbose bool) (*Collector, error) {
-	if verbose {
+func New(cfg *config.ArpConfig) (*Collector, error) {
+	if cfg.Verbose {
 		arp.Debug = true
 	}
 
-	nets, err := arcnet.GetFilteredLocalNets(subnets)
+	nets, err := arcnet.GetFilteredLocalNets(cfg.Subnets)
 	if err == nil {
 		var handlers []*NetHandler
 		handlers, err = getAllHandlers(nets)
@@ -43,7 +43,7 @@ func New(subnets []*net.IPMask, verbose bool) (*Collector, error) {
 			ctx, cancel := context.WithCancel(context.Background())
 
 			res := &Collector{
-				verbose:     verbose,
+				cfg:         cfg,
 				ctx:         ctx,
 				cancel:      cancel,
 				nethandlers: handlers,
@@ -59,6 +59,31 @@ func New(subnets []*net.IPMask, verbose bool) (*Collector, error) {
 
 func (c *Collector) Close() {
 
+}
+
+func (c *Collector) start() {
+	for _, h := range c.nethandlers {
+		h.handler.AddNotificationChannel(c.intChan)
+		go h.handler.ListenAndServe(c.ctx)
+		c.ArpChannel <- c.getSelfCacheMessage(h)
+	}
+}
+
+func (c *Collector) getSelfCacheMessage(h *NetHandler) *models.CacheMessage {
+	res := &models.CacheMessage{
+		Entry: &arp.MACEntry{
+			MAC: h.ifNet.Interface.HardwareAddr,
+			IPArray: [4]arp.IPEntry{
+				{
+					IP:          h.ifNet.Network.IP.To4(),
+					LastUpdated: time.Now(),
+				},
+			},
+		},
+		Static: true,
+	}
+
+	return res
 }
 
 func getAllHandlers(nps []*models.IfNetPack) ([]*NetHandler, error) {
