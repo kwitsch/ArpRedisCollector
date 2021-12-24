@@ -20,6 +20,7 @@ func main() {
 			arp, aErr := collector.New(&cfg.Arp)
 			if aErr == nil {
 				fmt.Println("Collector start")
+				arp.Start()
 
 				intChan := make(chan os.Signal, 1)
 				signal.Notify(intChan, os.Interrupt)
