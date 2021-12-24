@@ -59,11 +59,15 @@ func (c *Collector) Close() {
 	close(c.ArpChannel)
 }
 
-func (c *Collector) start() {
+func (c *Collector) Start() {
 	for _, h := range c.nethandlers {
 		h.handler.AddNotificationChannel(c.intChan)
 		go h.handler.ListenAndServe(c.ctx)
 		c.ArpChannel <- c.getSelfCacheMessage(h)
+
+		if m, e := c.getGatewayCacheMessage(h); e == nil {
+			c.ArpChannel <- m
+		}
 	}
 
 	go func() {
@@ -97,6 +101,20 @@ func (c *Collector) getSelfCacheMessage(h *NetHandler) *models.CacheMessage {
 	}
 
 	return res
+}
+
+func (c *Collector) getGatewayCacheMessage(h *NetHandler) (*models.CacheMessage, error) {
+	mac, err := h.handler.WhoIs(*h.ifNet.Gateway)
+	if err == nil {
+		res := &models.CacheMessage{
+			Entry:  &mac,
+			Static: true,
+		}
+
+		return res, nil
+	}
+
+	return nil, err
 }
 
 func getAllHandlers(nps []*models.IfNetPack, cfg *config.ArpConfig) ([]*NetHandler, error) {
