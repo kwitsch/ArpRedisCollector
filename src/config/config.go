@@ -26,7 +26,7 @@ type RedisConfig struct {
 }
 
 type ArpConfig struct {
-	nets                    map[int]string `koanf:"subnet"`
+	CIDRs                   map[int]string `koanf:"subnet"`
 	ProbeInterval           time.Duration  `koanf:"probeInterval" default:"1m"`
 	FullNetworkScanInterval time.Duration  `koanf:"fullNetworkScanInterval" default:"10m"`
 	OfflineDeadline         time.Duration  `koanf:"offlineDeadline" default:"5m"`
@@ -43,12 +43,12 @@ func Get() (*Config, error) {
 		if len(res.Redis.Address) == 0 {
 			err = fmt.Errorf("ARC_REDIS_ADDRESS has to be set")
 		} else {
-			if len(res.Arp.nets) > 0 {
+			if len(res.Arp.CIDRs) > 0 {
 				snets := make([]*net.IPNet, 0)
 
 				var snet *net.IPNet
 
-				for _, f := range res.Arp.nets {
+				for _, f := range res.Arp.CIDRs {
 					_, snet, err = net.ParseCIDR(f)
 					if err == nil {
 						snets = append(snets, snet)
