@@ -63,6 +63,7 @@ func (c *Collector) start() {
 	}
 }
 
+// getSelfCacheMessage addes a static cache entry for own MAC
 func (c *Collector) getSelfCacheMessage(h *NetHandler) *models.CacheMessage {
 	res := &models.CacheMessage{
 		Entry: &arp.MACEntry{
