@@ -10,12 +10,6 @@ import (
 	arcnet "github.com/kwitsch/ArpRedisCollector/net"
 )
 
-const (
-	probeInterval           time.Duration = time.Duration(1 * time.Minute)
-	fullNetworkScanInterval time.Duration = time.Duration(10 * time.Minute)
-	offlineDeadline         time.Duration = time.Duration(5 * time.Minute)
-)
-
 type Collector struct {
 	cfg         *config.ArpConfig
 	ctx         context.Context
@@ -38,7 +32,7 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 	nets, err := arcnet.GetFilteredLocalNets(cfg.Subnets)
 	if err == nil {
 		var handlers []*NetHandler
-		handlers, err = getAllHandlers(nets)
+		handlers, err = getAllHandlers(nets, cfg)
 		if err == nil {
 			ctx, cancel := context.WithCancel(context.Background())
 
@@ -86,10 +80,10 @@ func (c *Collector) getSelfCacheMessage(h *NetHandler) *models.CacheMessage {
 	return res
 }
 
-func getAllHandlers(nps []*models.IfNetPack) ([]*NetHandler, error) {
+func getAllHandlers(nps []*models.IfNetPack, cfg *config.ArpConfig) ([]*NetHandler, error) {
 	res := make([]*NetHandler, 0)
 	for _, np := range nps {
-		h, err := getHandler(np)
+		h, err := getHandler(np, cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -99,19 +93,19 @@ func getAllHandlers(nps []*models.IfNetPack) ([]*NetHandler, error) {
 	return res, nil
 }
 
-func getHandler(np *models.IfNetPack) (*NetHandler, error) {
-	cfg := arp.Config{
+func getHandler(np *models.IfNetPack, cfg *config.ArpConfig) (*NetHandler, error) {
+	acfg := arp.Config{
 		NIC:                     np.Interface.Name,
 		HostMAC:                 np.Interface.HardwareAddr,
 		HostIP:                  np.Network.IP.To4(),
 		RouterIP:                *np.Gateway,
 		HomeLAN:                 *np.Network,
-		ProbeInterval:           probeInterval,
-		FullNetworkScanInterval: fullNetworkScanInterval,
-		OfflineDeadline:         offlineDeadline,
+		ProbeInterval:           cfg.ProbeInterval,
+		FullNetworkScanInterval: cfg.FullNetworkScanInterval,
+		OfflineDeadline:         cfg.OfflineDeadline,
 	}
 
-	handler, err := arp.New(cfg)
+	handler, err := arp.New(acfg)
 	if err == nil {
 		res := &NetHandler{
 			handler: handler,

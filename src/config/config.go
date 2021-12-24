@@ -26,9 +26,12 @@ type RedisConfig struct {
 }
 
 type ArpConfig struct {
-	nets    map[int]string `koanf:"subnet"`
-	Subnets []*net.IPMask
-	Verbose bool
+	nets                    map[int]string `koanf:"subnet"`
+	ProbeInterval           time.Duration  `koanf:"probeInterval" default:"1m"`
+	FullNetworkScanInterval time.Duration  `koanf:"fullNetworkScanInterval" default:"10m"`
+	OfflineDeadline         time.Duration  `koanf:"offlineDeadline" default:"5m"`
+	Subnets                 []*net.IPMask
+	Verbose                 bool
 }
 
 const prefix = "ARC_"
