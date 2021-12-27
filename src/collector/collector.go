@@ -60,13 +60,10 @@ func (c *Collector) Start() {
 
 	go func() {
 		pollTicker := time.NewTicker(c.cfg.PollIntervall).C
-		readTicker := time.NewTicker(c.cfg.ReadIntervall).C
 		for {
 			select {
 			case <-pollTicker:
 				c.poll()
-			case <-readTicker:
-				c.read()
 			}
 		}
 	}()
@@ -84,32 +81,21 @@ func (c *Collector) poll() {
 		for i := start + 1; i < finish; i++ {
 			ip := make(net.IP, 4)
 			binary.BigEndian.PutUint32(ip, i)
-			err := h.client.Request(ip)
-			if err != nil {
-				fmt.Println("Collector poll error", err, ip.String())
-			}
-		}
-	}
-}
-func (c *Collector) read() {
-	if c.cfg.Verbose {
-		fmt.Println("Collector read")
-	}
-	for _, h := range c.nethandlers {
-		h.client.SetDeadline(time.Now().Add(time.Second))
-		arp, _, err := h.client.Read()
-		if err == nil {
-			if c.cfg.Verbose {
-				fmt.Println("Collector read", arp.SenderHardwareAddr.String(), "=", arp.SenderIP.String())
-			}
-			c.ArpChannel <- &models.CacheMessage{
-				IP:     arp.SenderIP,
-				Mac:    arp.SenderHardwareAddr,
-				Static: false,
-			}
-		} else {
-			if c.cfg.Verbose {
-				fmt.Println("Collector read error", err)
+			h.client.SetDeadline(time.Now().Add(time.Second * 5))
+			addr, err := h.client.Resolve(ip)
+			if err == nil {
+				c.ArpChannel <- &models.CacheMessage{
+					IP:     ip,
+					Mac:    addr,
+					Static: false,
+				}
+				if c.cfg.Verbose {
+					fmt.Println("Collector poll collected", ip.String(), "=", addr.String())
+				}
+			} else {
+				if c.cfg.Verbose {
+					fmt.Println("Collector poll error", err, ip.String())
+				}
 			}
 		}
 	}
