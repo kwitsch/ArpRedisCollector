@@ -13,8 +13,6 @@ import (
 	marp "github.com/mdlayher/arp"
 )
 
-const readTime time.Duration = time.Second * 2
-
 type Collector struct {
 	cfg         *config.ArpConfig
 	ctx         context.Context
@@ -62,7 +60,7 @@ func (c *Collector) Start() {
 
 	go func() {
 		pollTicker := time.NewTicker(c.cfg.PollIntervall).C
-		readTicker := time.NewTicker(readTime).C
+		readTicker := time.NewTicker(c.cfg.ReadIntervall).C
 		for {
 			select {
 			case <-pollTicker:
@@ -88,7 +86,7 @@ func (c *Collector) poll() {
 			binary.BigEndian.PutUint32(ip, i)
 			err := h.client.Request(ip)
 			if err != nil {
-				fmt.Println("Collector poll error", err)
+				fmt.Println("Collector poll error", err, ip.String())
 			}
 		}
 	}
