@@ -13,23 +13,19 @@ import (
 	marp "github.com/mdlayher/arp"
 )
 
+const readTime time.Duration = time.Second * 2
+
 type Collector struct {
 	cfg         *config.ArpConfig
 	ctx         context.Context
 	cancel      context.CancelFunc
 	nethandlers []*NetHandler
-	intChan     chan *intRequest
 	ArpChannel  chan *models.CacheMessage
 }
 
 type NetHandler struct {
 	client *marp.Client
 	ifNet  *models.IfNetPack
-}
-
-type intRequest struct {
-	client marp.Client
-	ip     net.IP
 }
 
 func New(cfg *config.ArpConfig) (*Collector, error) {
@@ -45,7 +41,6 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 				ctx:         ctx,
 				cancel:      cancel,
 				nethandlers: handlers,
-				intChan:     make(chan *intRequest, 256),
 				ArpChannel:  make(chan *models.CacheMessage, 256),
 			}
 
@@ -59,40 +54,30 @@ func (c *Collector) Close() {
 	for _, h := range c.nethandlers {
 		h.client.Close()
 	}
-	close(c.intChan)
 	close(c.ArpChannel)
 }
 
 func (c *Collector) Start() {
-	if c.cfg.Verbose {
-		fmt.Println("Collector start")
-	}
 	c.poll()
 
 	go func() {
-		ticker := time.NewTicker(c.cfg.PollIntervall).C
+		pollTicker := time.NewTicker(c.cfg.PollIntervall).C
+		readTicker := time.NewTicker(readTime).C
 		for {
 			select {
-			case <-ticker:
-				if c.cfg.Verbose {
-					fmt.Println("Collector poll")
-				}
+			case <-pollTicker:
 				c.poll()
-			case m := <-c.intChan:
-				ha, err := m.client.Resolve(m.ip)
-				if err == nil {
-					c.ArpChannel <- &models.CacheMessage{
-						Mac:    ha,
-						IP:     m.ip,
-						Static: false,
-					}
-				}
+			case <-readTicker:
+				c.read()
 			}
 		}
 	}()
 }
 
 func (c *Collector) poll() {
+	if c.cfg.Verbose {
+		fmt.Println("Collector poll")
+	}
 	for _, h := range c.nethandlers {
 		mask := binary.BigEndian.Uint32(h.ifNet.Network.Mask)
 		start := binary.BigEndian.Uint32(h.ifNet.Network.IP)
@@ -101,9 +86,31 @@ func (c *Collector) poll() {
 		for i := start + 1; i < finish; i++ {
 			ip := make(net.IP, 4)
 			binary.BigEndian.PutUint32(ip, i)
-			c.intChan <- &intRequest{
-				ip:     ip,
-				client: *h.client,
+			err := h.client.Request(ip)
+			if err != nil {
+				fmt.Println("Collector poll error", err)
+			}
+		}
+	}
+}
+func (c *Collector) read() {
+	if c.cfg.Verbose {
+		fmt.Println("Collector read")
+	}
+	for _, h := range c.nethandlers {
+		arp, _, err := h.client.Read()
+		if err == nil {
+			if c.cfg.Verbose {
+				fmt.Println("Collector read", arp.SenderHardwareAddr.String(), "=", arp.SenderIP.String())
+			}
+			c.ArpChannel <- &models.CacheMessage{
+				IP:     arp.SenderIP,
+				Mac:    arp.SenderHardwareAddr,
+				Static: false,
+			}
+		} else {
+			if c.cfg.Verbose {
+				fmt.Println("Collector read error", err)
 			}
 		}
 	}
