@@ -96,6 +96,7 @@ func (c *Collector) read() {
 		fmt.Println("Collector read")
 	}
 	for _, h := range c.nethandlers {
+		h.client.SetDeadline(time.Now().Add(time.Second))
 		arp, _, err := h.client.Read()
 		if err == nil {
 			if c.cfg.Verbose {
