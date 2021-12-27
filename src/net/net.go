@@ -13,21 +13,13 @@ func GetAllLocalNets() ([]*models.IfNetPack, error) {
 	ifaces, err := net.Interfaces()
 	if err == nil {
 		for _, i := range ifaces {
-			addrs, ierr := i.Addrs()
-			if ierr == nil {
-				for _, a := range addrs {
-					switch v := a.(type) {
-					case *net.IPNet:
-						if strings.Count(v.String(), ":") < 2 && !v.IP.IsLoopback() {
-							aRes := &models.IfNetPack{
-								Interface: &i,
-								Network:   v,
-							}
-							res = append(res, aRes)
-						}
-					}
-
+			hnet := GetHomeNet(&i)
+			if hnet != nil {
+				aRes := &models.IfNetPack{
+					Interface: &i,
+					Network:   hnet,
 				}
+				res = append(res, aRes)
 			}
 		}
 	}
