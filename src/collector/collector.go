@@ -17,6 +17,7 @@ type Collector struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	nethandlers []*NetHandler
+	polldur     time.Duration
 	reqChannel  chan *resolveRequest
 	ArpChannel  chan *models.CacheMessage
 }
@@ -39,11 +40,17 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 		if err == nil {
 			ctx, cancel := context.WithCancel(context.Background())
 
+			ic := 0
+			for _, h := range handlers {
+				ic += len(h.ifNet.Others)
+			}
+
 			res := &Collector{
 				cfg:         cfg,
 				ctx:         ctx,
 				cancel:      cancel,
 				nethandlers: handlers,
+				polldur:     (time.Duration(ic) * cfg.Timeout) + cfg.PollIntervall,
 				reqChannel:  make(chan *resolveRequest, 1000),
 				ArpChannel:  make(chan *models.CacheMessage, 256),
 			}
@@ -73,7 +80,7 @@ func (c *Collector) Start() {
 	c.poll()
 
 	go func() {
-		pollTicker := time.NewTicker(c.cfg.PollIntervall).C
+		pollTicker := time.NewTicker(c.polldur).C
 		for {
 			select {
 			case rr := <-c.reqChannel:
