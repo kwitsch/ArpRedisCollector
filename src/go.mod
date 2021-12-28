@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/kwitsch/go-dockerutils v0.0.9
-	github.com/mdlayher/arp v0.0.0-20191213142603-f72070a231fc
 	github.com/onsi/ginkgo v1.16.4
 )
 
@@ -26,8 +25,7 @@ require (
 
 require (
 	github.com/go-redis/redis/v8 v8.11.4
-	github.com/mdlayher/ethernet v0.0.0-20190606142754-0394541c37b7 // indirect
-	github.com/mdlayher/raw v0.0.0-20211126142749-4eae47f3d54b // indirect
+	github.com/j-keck/arping v1.0.2
 	github.com/onsi/gomega v1.17.0
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
