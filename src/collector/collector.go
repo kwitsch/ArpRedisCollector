@@ -60,6 +60,7 @@ func (c *Collector) Close() {
 	}
 	close(c.reqChannel)
 	close(c.ArpChannel)
+	c.cancel()
 }
 
 func (c *Collector) Start() {
@@ -79,6 +80,8 @@ func (c *Collector) Start() {
 				c.resolve(rr)
 			case <-pollTicker:
 				c.poll()
+			case <-c.ctx.Done():
+				return
 			}
 		}
 	}()
