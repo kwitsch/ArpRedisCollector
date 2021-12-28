@@ -17,7 +17,7 @@ func GetAllLocalNets() ([]*models.IfNetPack, error) {
 			hnet := GetHomeNet(&i)
 			if hnet != nil {
 				aRes := &models.IfNetPack{
-					Interface: &i,
+					Interface: i,
 					Network:   hnet,
 					IP:        &hnet.IP,
 					Others:    GetAllIpsWithoutSelf(hnet, &hnet.IP),

@@ -15,7 +15,7 @@ type CacheMessage struct {
 
 // IfNetPack bundles interface and network information
 type IfNetPack struct {
-	Interface *net.Interface
+	Interface net.Interface
 	Network   *net.IPNet
 	IP        *net.IP
 	Others    []*net.IP
