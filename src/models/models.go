@@ -9,7 +9,7 @@ import (
 // Static: if enabled redis entries have no TTL
 type CacheMessage struct {
 	Mac    net.HardwareAddr
-	IP     net.IP
+	IP     *net.IP
 	Static bool
 }
 
