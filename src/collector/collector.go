@@ -71,12 +71,14 @@ func (c *Collector) Close() {
 }
 
 func (c *Collector) Start() {
+	fmt.Println("Collector Start for:")
+
 	if c.cfg.Verbose {
-		fmt.Println("Collector Start for:")
 		for _, h := range c.nethandlers {
 			fmt.Println("-", h.ifNet.String())
 		}
 	}
+
 	c.poll()
 
 	go func() {
@@ -95,9 +97,8 @@ func (c *Collector) Start() {
 }
 
 func (c *Collector) poll() {
-	if c.cfg.Verbose {
-		fmt.Println("Collector poll")
-	}
+	fmt.Println("Collector poll")
+
 	for _, h := range c.nethandlers {
 		c.handlerPoll(h)
 	}
@@ -122,12 +123,10 @@ func (c *Collector) resolve(rr *resolveRequest) {
 	addr, err := rr.client.Resolve(*rr.ip)
 	if err == nil {
 		c.publish(rr.ip, addr)
-		if c.cfg.Verbose {
-			fmt.Println("Collector poll collected", rr.ip.String(), "=", addr.String())
-		}
+		fmt.Println("Collector poll", rr.ip.String(), "=", addr.String())
 	} else {
 		if c.cfg.Verbose {
-			fmt.Println("Collector poll error", err, rr.ip.String())
+			fmt.Println("Collector", rr.ip.String(), err)
 		}
 	}
 }

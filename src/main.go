@@ -19,7 +19,6 @@ func main() {
 		if rErr == nil {
 			arp, aErr := collector.New(&cfg.Arp)
 			if aErr == nil {
-				fmt.Println("Collector start")
 				arp.Start()
 
 				intChan := make(chan os.Signal, 1)
