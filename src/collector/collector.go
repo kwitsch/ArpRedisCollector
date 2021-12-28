@@ -144,7 +144,7 @@ func getAllHandlers(nps []*models.IfNetPack, cfg *config.ArpConfig) ([]*NetHandl
 }
 
 func getHandler(np *models.IfNetPack, cfg *config.ArpConfig) (*NetHandler, error) {
-	c, err := arp.Dial(np.Interface)
+	c, err := arp.Dial(&np.Interface)
 	if err == nil {
 		res := &NetHandler{
 			client: c,
