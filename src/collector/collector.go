@@ -118,7 +118,7 @@ func (c *Collector) resolve(rr *resolveRequest) {
 		}
 	} else {
 		if c.cfg.Verbose {
-			fmt.Println("Collector poll error", err, rr.ip.String())
+			fmt.Println("Collector poll error", err)
 		}
 	}
 }
