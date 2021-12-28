@@ -1,15 +1,16 @@
 package net
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/kwitsch/ArpRedisCollector/models"
 )
 
 func GetAllLocalNets() ([]*models.IfNetPack, error) {
 	res := make([]*models.IfNetPack, 0)
+
 	ifaces, err := net.Interfaces()
 	if err == nil {
 		for _, i := range ifaces {
@@ -18,7 +19,10 @@ func GetAllLocalNets() ([]*models.IfNetPack, error) {
 				aRes := &models.IfNetPack{
 					Interface: &i,
 					Network:   hnet,
+					IP:        &hnet.IP,
+					Others:    GetAllIpsWithoutSelf(hnet, &hnet.IP),
 				}
+
 				res = append(res, aRes)
 			}
 		}
@@ -28,6 +32,7 @@ func GetAllLocalNets() ([]*models.IfNetPack, error) {
 
 func GetFilteredLocalNets(filters []*net.IPNet) ([]*models.IfNetPack, error) {
 	res := make([]*models.IfNetPack, 0)
+
 	nets, err := GetAllLocalNets()
 	if err == nil {
 		if len(nets) > 0 {
@@ -52,11 +57,32 @@ func GetHomeNet(iface *net.Interface) *net.IPNet {
 		for _, a := range addrs {
 			switch v := a.(type) {
 			case *net.IPNet:
-				if strings.Count(v.String(), ":") < 2 && !v.IP.IsLoopback() {
+				if v.IP.To4() != nil &&
+					!v.IP.IsLoopback() {
 					return v
 				}
 			}
 		}
 	}
 	return nil
+}
+
+func GetAllIpsWithoutSelf(hnet *net.IPNet, self *net.IP) []*net.IP {
+	res := make([]*net.IP, 0)
+
+	_, v4net, _ := net.ParseCIDR(hnet.String())
+	mask := binary.BigEndian.Uint32(v4net.Mask)
+	start := binary.BigEndian.Uint32(v4net.IP)
+	finish := (start & mask) | (mask ^ 0xffffffff)
+
+	for i := start + 1; i < finish; i++ {
+		ip := make(net.IP, 4)
+		binary.BigEndian.PutUint32(ip, i)
+
+		if !ip.Equal(*self) {
+			res = append(res, &ip)
+		}
+	}
+
+	return res
 }
