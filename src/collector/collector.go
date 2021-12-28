@@ -6,50 +6,58 @@ import (
 	"net"
 	"time"
 
-	"github.com/j-keck/arping"
 	"github.com/kwitsch/ArpRedisCollector/config"
 	"github.com/kwitsch/ArpRedisCollector/models"
 	arcnet "github.com/kwitsch/ArpRedisCollector/net"
+	"github.com/mdlayher/arp"
 )
 
 type Collector struct {
-	cfg        *config.ArpConfig
-	ctx        context.Context
-	cancel     context.CancelFunc
-	netpacks   []*models.IfNetPack
-	reqChannel chan *resolveRequest
-	ArpChannel chan *models.CacheMessage
+	cfg         *config.ArpConfig
+	ctx         context.Context
+	cancel      context.CancelFunc
+	nethandlers []*NetHandler
+	reqChannel  chan *resolveRequest
+	ArpChannel  chan *models.CacheMessage
+}
+
+type NetHandler struct {
+	client *arp.Client
+	ifNet  *models.IfNetPack
 }
 
 type resolveRequest struct {
-	intf *net.Interface
-	ip   *net.IP
+	client *arp.Client
+	ip     *net.IP
 }
 
 func New(cfg *config.ArpConfig) (*Collector, error) {
-	if cfg.Verbose {
-		arping.EnableVerboseLog()
-	}
 	nets, err := arcnet.GetFilteredLocalNets(cfg.Subnets)
 	if err == nil {
-		ctx, cancel := context.WithCancel(context.Background())
+		var handlers []*NetHandler
+		handlers, err = getAllHandlers(nets, cfg)
+		if err == nil {
+			ctx, cancel := context.WithCancel(context.Background())
 
-		res := &Collector{
-			cfg:        cfg,
-			ctx:        ctx,
-			cancel:     cancel,
-			netpacks:   nets,
-			reqChannel: make(chan *resolveRequest, 1000),
-			ArpChannel: make(chan *models.CacheMessage, 256),
+			res := &Collector{
+				cfg:         cfg,
+				ctx:         ctx,
+				cancel:      cancel,
+				nethandlers: handlers,
+				reqChannel:  make(chan *resolveRequest, 1000),
+				ArpChannel:  make(chan *models.CacheMessage, 256),
+			}
+
+			return res, nil
 		}
-
-		return res, nil
 	}
-
 	return nil, err
 }
 
 func (c *Collector) Close() {
+	for _, h := range c.nethandlers {
+		h.client.Close()
+	}
 	close(c.reqChannel)
 	close(c.ArpChannel)
 }
@@ -57,8 +65,8 @@ func (c *Collector) Close() {
 func (c *Collector) Start() {
 	if c.cfg.Verbose {
 		fmt.Println("Collector Start for:")
-		for _, p := range c.netpacks {
-			fmt.Println("-", p.String())
+		for _, h := range c.nethandlers {
+			fmt.Println("-", h.ifNet.String())
 		}
 	}
 	c.poll()
@@ -80,28 +88,32 @@ func (c *Collector) poll() {
 	if c.cfg.Verbose {
 		fmt.Println("Collector poll")
 	}
+	for _, h := range c.nethandlers {
+		c.handlerPoll(h)
+	}
+}
 
-	for _, p := range c.netpacks {
-		c.setSelf(p)
-		for _, ip := range p.Others {
-			c.reqChannel <- &resolveRequest{
-				ip:   ip,
-				intf: p.Interface,
-			}
+func (c *Collector) handlerPoll(h *NetHandler) {
+	c.setSelf(h)
+	for _, ip := range h.ifNet.Others {
+		c.reqChannel <- &resolveRequest{
+			ip:     ip,
+			client: h.client,
 		}
 	}
 }
 
-func (c *Collector) setSelf(p *models.IfNetPack) {
+func (c *Collector) setSelf(h *NetHandler) {
 	c.ArpChannel <- &models.CacheMessage{
-		IP:     p.IP,
-		Mac:    p.Interface.HardwareAddr,
+		IP:     h.ifNet.IP,
+		Mac:    h.client.HardwareAddr(),
 		Static: true,
 	}
 }
 
 func (c *Collector) resolve(rr *resolveRequest) {
-	addr, _, err := arping.PingOverIface(*rr.ip, *rr.intf)
+	rr.client.SetDeadline(time.Now().Add(time.Second * 5))
+	addr, err := rr.client.Resolve(*rr.ip)
 	if err == nil {
 		c.ArpChannel <- &models.CacheMessage{
 			IP:     rr.ip,
@@ -116,4 +128,31 @@ func (c *Collector) resolve(rr *resolveRequest) {
 			fmt.Println("Collector poll error", err, rr.ip.String())
 		}
 	}
+}
+
+func getAllHandlers(nps []*models.IfNetPack, cfg *config.ArpConfig) ([]*NetHandler, error) {
+	res := make([]*NetHandler, 0)
+	for _, np := range nps {
+		h, err := getHandler(np, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, h)
+	}
+	return res, nil
+}
+
+func getHandler(np *models.IfNetPack, cfg *config.ArpConfig) (*NetHandler, error) {
+	c, err := arp.Dial(np.Interface)
+	if err == nil {
+		res := &NetHandler{
+			client: c,
+			ifNet:  np,
+		}
+
+		return res, nil
+	}
+
+	return nil, err
 }
