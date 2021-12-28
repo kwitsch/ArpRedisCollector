@@ -1,46 +1,59 @@
 package collector
 
 import (
-	"bufio"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"net"
-	"os"
-	"strconv"
-	"strings"
+	"time"
 
-	"github.com/irai/arp"
 	"github.com/kwitsch/ArpRedisCollector/config"
+	"github.com/kwitsch/ArpRedisCollector/models"
+	arcnet "github.com/kwitsch/ArpRedisCollector/net"
+	"github.com/mdlayher/arp"
 )
 
 type Collector struct {
-	cfg        *config.ArpConfig
-	handler    *arp.Handler
-	ctx        context.Context
-	cancel     context.CancelFunc
-	ArpChannel chan arp.MACEntry
+	cfg         *config.ArpConfig
+	ctx         context.Context
+	cancel      context.CancelFunc
+	nethandlers []*NetHandler
+	polldur     time.Duration
+	reqChannel  chan *resolveRequest
+	ArpChannel  chan *models.CacheMessage
+}
+
+type NetHandler struct {
+	client *arp.Client
+	ifNet  *models.IfNetPack
+}
+
+type resolveRequest struct {
+	client *arp.Client
+	ip     *net.IP
 }
 
 func New(cfg *config.ArpConfig) (*Collector, error) {
-	acfg, err := getConfig(cfg)
+	nets, err := arcnet.GetFilteredLocalNets(cfg.Subnets)
 	if err == nil {
-		var handler *arp.Handler
-		handler, err = arp.New(*acfg)
+		var handlers []*NetHandler
+		handlers, err = getAllHandlers(nets, cfg)
 		if err == nil {
 			ctx, cancel := context.WithCancel(context.Background())
-			arpChannel := make(chan arp.MACEntry, 16)
-			res := &Collector{
-				cfg:        cfg,
-				handler:    handler,
-				ctx:        ctx,
-				cancel:     cancel,
-				ArpChannel: arpChannel,
+
+			ic := 0
+			for _, h := range handlers {
+				ic += len(h.ifNet.Others)
 			}
 
-			go res.handler.ListenAndServe(res.ctx)
-
-			res.handler.AddNotificationChannel(res.ArpChannel)
+			res := &Collector{
+				cfg:         cfg,
+				ctx:         ctx,
+				cancel:      cancel,
+				nethandlers: handlers,
+				polldur:     (time.Duration(ic) * cfg.Timeout) + cfg.Intervall,
+				reqChannel:  make(chan *resolveRequest, 1000),
+				ArpChannel:  make(chan *models.CacheMessage, 256),
+			}
 
 			return res, nil
 		}
@@ -49,81 +62,106 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 }
 
 func (c *Collector) Close() {
-	c.cancel()
-
-	c.handler.Close()
-
+	for _, h := range c.nethandlers {
+		h.client.Close()
+	}
+	close(c.reqChannel)
 	close(c.ArpChannel)
+	c.cancel()
 }
 
-func getConfig(cfg *config.ArpConfig) (*arp.Config, error) {
-	iface, err := net.InterfaceByName(cfg.Interface)
+func (c *Collector) Start() {
+	fmt.Println("Collector Start for:")
+
+	if c.cfg.Verbose {
+		for _, h := range c.nethandlers {
+			fmt.Println("-", h.ifNet.String())
+		}
+	}
+
+	c.poll()
+
+	go func() {
+		pollTicker := time.NewTicker(c.polldur).C
+		for {
+			select {
+			case rr := <-c.reqChannel:
+				c.resolve(rr)
+			case <-pollTicker:
+				c.poll()
+			case <-c.ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+func (c *Collector) poll() {
+	fmt.Println("Collector poll")
+
+	for _, h := range c.nethandlers {
+		c.handlerPoll(h)
+	}
+}
+
+func (c *Collector) handlerPoll(h *NetHandler) {
+	c.setSelf(h)
+	for _, ip := range h.ifNet.Others {
+		c.reqChannel <- &resolveRequest{
+			ip:     ip,
+			client: h.client,
+		}
+	}
+}
+
+func (c *Collector) setSelf(h *NetHandler) {
+	c.publish(h.ifNet.IP, h.client.HardwareAddr())
+}
+
+func (c *Collector) resolve(rr *resolveRequest) {
+	rr.client.SetDeadline(time.Now().Add(c.cfg.Timeout))
+	addr, err := rr.client.Resolve(*rr.ip)
 	if err == nil {
-		homeNet := getHomeNet(iface)
-		if homeNet != nil {
-			var gateway net.IP
-			gateway, err = getDefaultGateway(cfg.Interface)
-			if err == nil {
-				return &arp.Config{
-					NIC:                     iface.Name,
-					HostMAC:                 iface.HardwareAddr,
-					HostIP:                  homeNet.IP.To4(),
-					RouterIP:                gateway,
-					HomeLAN:                 *homeNet,
-					ProbeInterval:           cfg.ProbeInterval,
-					FullNetworkScanInterval: cfg.FullNetworkScanInterval,
-					PurgeDeadline:           cfg.PurgeDeadline,
-				}, nil
-			}
-		} else {
-			err = fmt.Errorf("%s has no valid IPv4 address", cfg.Interface)
+		c.publish(rr.ip, addr)
+		fmt.Println("Collector poll", rr.ip.String(), "=", addr.String())
+	} else {
+		if c.cfg.Verbose {
+			fmt.Println("Collector", rr.ip.String(), err)
 		}
 	}
+}
+
+func (c *Collector) publish(ip *net.IP, mac net.HardwareAddr) {
+	c.ArpChannel <- &models.CacheMessage{
+		IP:     ip,
+		Mac:    mac,
+		Static: c.cfg.StaticTable,
+	}
+}
+
+func getAllHandlers(nps []*models.IfNetPack, cfg *config.ArpConfig) ([]*NetHandler, error) {
+	res := make([]*NetHandler, 0)
+	for _, np := range nps {
+		h, err := getHandler(np, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, h)
+	}
+	return res, nil
+}
+
+func getHandler(np *models.IfNetPack, cfg *config.ArpConfig) (*NetHandler, error) {
+	c, err := arp.Dial(&np.Interface)
+	if err == nil {
+		res := &NetHandler{
+			client: c,
+			ifNet:  np,
+		}
+
+		return res, nil
+	}
+
 	return nil, err
-}
-
-func getHomeNet(iface *net.Interface) *net.IPNet {
-	addrs, ierr := iface.Addrs()
-	if ierr == nil {
-		for _, a := range addrs {
-			switch v := a.(type) {
-			case *net.IPNet:
-				if strings.Count(v.String(), ":") < 2 && !v.IP.IsLoopback() {
-					return v
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func getDefaultGateway(ifName string) (gw net.IP, err error) {
-
-	file, err := os.Open("/proc/net/route")
-	if err != nil {
-		return net.IPv4zero, err
-	}
-	defer file.Close()
-
-	res := net.IPv4zero
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		// 0 = Iface
-		// 1 = Destination
-		// 2 = Gateway
-		fields := strings.Split(scanner.Text(), "\t")
-		if fields[0] == ifName {
-			d64, _ := strconv.ParseInt("0x"+fields[2], 0, 64)
-			if d64 != 0 {
-				d32 := uint32(d64)
-				res = make(net.IP, 4)
-				binary.LittleEndian.PutUint32(res, d32)
-				break
-			}
-		}
-	}
-	if res.Equal(net.IPv4zero) {
-		err = fmt.Errorf("Coulden't get default gateway for interface %s", ifName)
-	}
-	return res, err
 }

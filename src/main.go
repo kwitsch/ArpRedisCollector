@@ -15,20 +15,23 @@ import (
 func main() {
 	cfg, cErr := config.Get()
 	if cErr == nil {
-		redis, rErr := redis.New(&cfg.Redis, cfg.Arp.ProbeInterval)
+		redis, rErr := redis.New(&cfg.Redis)
 		if rErr == nil {
 			arp, aErr := collector.New(&cfg.Arp)
 			if aErr == nil {
-				fmt.Println("Collector start")
+				arp.Start()
+
 				intChan := make(chan os.Signal, 1)
 				signal.Notify(intChan, os.Interrupt)
+
 				for {
 					select {
 					case a := <-arp.ArpChannel:
-						redis.Publish(&a)
+						redis.Publish(a)
 					case <-intChan:
 						fmt.Println("Collector stopping")
 						arp.Close()
+						redis.Close()
 						os.Exit(0)
 					}
 				}
