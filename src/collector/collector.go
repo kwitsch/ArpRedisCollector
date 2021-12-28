@@ -50,7 +50,7 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 				ctx:         ctx,
 				cancel:      cancel,
 				nethandlers: handlers,
-				polldur:     (time.Duration(ic) * cfg.Timeout) + cfg.PollIntervall,
+				polldur:     (time.Duration(ic) * cfg.Timeout) + cfg.Intervall,
 				reqChannel:  make(chan *resolveRequest, 1000),
 				ArpChannel:  make(chan *models.CacheMessage, 256),
 			}
