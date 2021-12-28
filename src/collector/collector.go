@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"time"
@@ -10,7 +9,7 @@ import (
 	"github.com/kwitsch/ArpRedisCollector/config"
 	"github.com/kwitsch/ArpRedisCollector/models"
 	arcnet "github.com/kwitsch/ArpRedisCollector/net"
-	marp "github.com/mdlayher/arp"
+	"github.com/mdlayher/arp"
 )
 
 type Collector struct {
@@ -18,12 +17,18 @@ type Collector struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	nethandlers []*NetHandler
+	reqChannel  chan *resolveRequest
 	ArpChannel  chan *models.CacheMessage
 }
 
 type NetHandler struct {
-	client *marp.Client
+	client *arp.Client
 	ifNet  *models.IfNetPack
+}
+
+type resolveRequest struct {
+	client *arp.Client
+	ip     *net.IP
 }
 
 func New(cfg *config.ArpConfig) (*Collector, error) {
@@ -39,6 +44,7 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 				ctx:         ctx,
 				cancel:      cancel,
 				nethandlers: handlers,
+				reqChannel:  make(chan *resolveRequest, 1000),
 				ArpChannel:  make(chan *models.CacheMessage, 256),
 			}
 
@@ -52,16 +58,25 @@ func (c *Collector) Close() {
 	for _, h := range c.nethandlers {
 		h.client.Close()
 	}
+	close(c.reqChannel)
 	close(c.ArpChannel)
 }
 
 func (c *Collector) Start() {
+	if c.cfg.Verbose {
+		fmt.Println("Collector Start for:")
+		for _, h := range c.nethandlers {
+			fmt.Println("-", h.ifNet.String())
+		}
+	}
 	c.poll()
 
 	go func() {
 		pollTicker := time.NewTicker(c.cfg.PollIntervall).C
 		for {
 			select {
+			case rr := <-c.reqChannel:
+				c.resolve(rr)
 			case <-pollTicker:
 				c.poll()
 			}
@@ -74,29 +89,43 @@ func (c *Collector) poll() {
 		fmt.Println("Collector poll")
 	}
 	for _, h := range c.nethandlers {
-		mask := binary.BigEndian.Uint32(h.ifNet.Network.Mask)
-		start := binary.BigEndian.Uint32(h.ifNet.Network.IP)
-		finish := (start & mask) | (mask ^ 0xffffffff)
+		c.handlerPoll(h)
+	}
+}
 
-		for i := start + 1; i < finish; i++ {
-			ip := make(net.IP, 4)
-			binary.BigEndian.PutUint32(ip, i)
-			h.client.SetDeadline(time.Now().Add(time.Second * 5))
-			addr, err := h.client.Resolve(ip)
-			if err == nil {
-				c.ArpChannel <- &models.CacheMessage{
-					IP:     ip,
-					Mac:    addr,
-					Static: false,
-				}
-				if c.cfg.Verbose {
-					fmt.Println("Collector poll collected", ip.String(), "=", addr.String())
-				}
-			} else {
-				if c.cfg.Verbose {
-					fmt.Println("Collector poll error", err, ip.String())
-				}
-			}
+func (c *Collector) handlerPoll(h *NetHandler) {
+	c.setSelf(h)
+	for _, ip := range h.ifNet.Others {
+		c.reqChannel <- &resolveRequest{
+			ip:     ip,
+			client: h.client,
+		}
+	}
+}
+
+func (c *Collector) setSelf(h *NetHandler) {
+	c.ArpChannel <- &models.CacheMessage{
+		IP:     h.ifNet.IP,
+		Mac:    h.client.HardwareAddr(),
+		Static: true,
+	}
+}
+
+func (c *Collector) resolve(rr *resolveRequest) {
+	rr.client.SetDeadline(time.Now().Add(time.Second * 5))
+	addr, err := rr.client.Resolve(*rr.ip)
+	if err == nil {
+		c.ArpChannel <- &models.CacheMessage{
+			IP:     rr.ip,
+			Mac:    addr,
+			Static: false,
+		}
+		if c.cfg.Verbose {
+			fmt.Println("Collector poll collected", rr.ip.String(), "=", addr.String())
+		}
+	} else {
+		if c.cfg.Verbose {
+			fmt.Println("Collector poll error", err, rr.ip.String())
 		}
 	}
 }
@@ -115,7 +144,7 @@ func getAllHandlers(nps []*models.IfNetPack, cfg *config.ArpConfig) ([]*NetHandl
 }
 
 func getHandler(np *models.IfNetPack, cfg *config.ArpConfig) (*NetHandler, error) {
-	c, err := marp.Dial(np.Interface)
+	c, err := arp.Dial(np.Interface)
 	if err == nil {
 		res := &NetHandler{
 			client: c,
