@@ -104,22 +104,14 @@ func (c *Collector) handlerPoll(h *NetHandler) {
 }
 
 func (c *Collector) setSelf(h *NetHandler) {
-	c.ArpChannel <- &models.CacheMessage{
-		IP:     h.ifNet.IP,
-		Mac:    h.client.HardwareAddr(),
-		Static: c.cfg.StaticTable,
-	}
+	c.publish(h.ifNet.IP, h.client.HardwareAddr())
 }
 
 func (c *Collector) resolve(rr *resolveRequest) {
 	rr.client.SetDeadline(time.Now().Add(c.cfg.Timeout))
 	addr, err := rr.client.Resolve(*rr.ip)
 	if err == nil {
-		c.ArpChannel <- &models.CacheMessage{
-			IP:     rr.ip,
-			Mac:    addr,
-			Static: c.cfg.StaticTable,
-		}
+		c.publish(rr.ip, addr)
 		if c.cfg.Verbose {
 			fmt.Println("Collector poll collected", rr.ip.String(), "=", addr.String())
 		}
@@ -127,6 +119,14 @@ func (c *Collector) resolve(rr *resolveRequest) {
 		if c.cfg.Verbose {
 			fmt.Println("Collector poll error", err, rr.ip.String())
 		}
+	}
+}
+
+func (c *Collector) publish(ip *net.IP, mac net.HardwareAddr) {
+	c.ArpChannel <- &models.CacheMessage{
+		IP:     ip,
+		Mac:    mac,
+		Static: c.cfg.StaticTable,
 	}
 }
 
