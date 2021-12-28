@@ -106,7 +106,7 @@ func (c *Collector) setSelf(p *models.IfNetPack) {
 }
 
 func (c *Collector) resolve(rr *resolveRequest) {
-	addr, _, err := arping.PingOverIface(*rr.ip, *rr.intf)
+	addr, _, err := arping.Ping(*rr.ip)
 	if err == nil {
 		c.ArpChannel <- &models.CacheMessage{
 			IP:     rr.ip,
