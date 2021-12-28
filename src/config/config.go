@@ -28,7 +28,7 @@ type RedisConfig struct {
 type ArpConfig struct {
 	CIDRs         map[int]string `koanf:"subnet"`
 	PollIntervall time.Duration  `koan:"pollIntervall" default:"10m"`
-	Timeout       time.Duration  `koanf:"timeout" default:"200ms"`
+	Timeout       time.Duration  `koanf:"timeout" default:"500ms"`
 	StaticTable   bool           `koanf:"staticTable" default:"false"`
 	Subnets       []*net.IPNet
 	Verbose       bool
