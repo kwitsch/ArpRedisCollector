@@ -17,10 +17,9 @@ func GetAllLocalNets() ([]*models.IfNetPack, error) {
 			hnet := GetHomeNet(&i)
 			if hnet != nil {
 				aRes := &models.IfNetPack{
-					Interface: &i,
-					Network:   hnet,
-					IP:        &hnet.IP,
-					Others:    GetAllIpsWithoutSelf(hnet, &hnet.IP),
+					Network: hnet,
+					IP:      &hnet.IP,
+					Others:  GetAllIps(hnet, &hnet.IP),
 				}
 
 				res = append(res, aRes)
@@ -67,7 +66,7 @@ func GetHomeNet(iface *net.Interface) *net.IPNet {
 	return nil
 }
 
-func GetAllIpsWithoutSelf(hnet *net.IPNet, self *net.IP) []*net.IP {
+func GetAllIps(hnet *net.IPNet, self *net.IP) []*net.IP {
 	res := make([]*net.IP, 0)
 
 	_, v4net, _ := net.ParseCIDR(hnet.String())
@@ -78,10 +77,7 @@ func GetAllIpsWithoutSelf(hnet *net.IPNet, self *net.IP) []*net.IP {
 	for i := start + 1; i < finish; i++ {
 		ip := make(net.IP, 4)
 		binary.BigEndian.PutUint32(ip, i)
-
-		if !ip.Equal(*self) {
-			res = append(res, &ip)
-		}
+		res = append(res, &ip)
 	}
 
 	return res

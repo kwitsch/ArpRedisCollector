@@ -21,17 +21,15 @@ type RedisConfig struct {
 	Database           int           `koanf:"database" default:"0"`
 	ConnectionAttempts int           `koanf:"connectionAttempts" default:"3"`
 	ConnectionCooldown time.Duration `koanf:"connectionCooldown" default:"1s"`
-	TTL                time.Duration
 	Verbose            bool
 }
 
 type ArpConfig struct {
-	CIDRs         map[int]string `koanf:"subnet"`
-	PollIntervall time.Duration  `koan:"pollIntervall" default:"10m"`
-	StaticTable   bool           `koanf:"staticTable" default:"false"`
-	Timeout       time.Duration  `koanf:"timeout" default:"5s"`
-	Subnets       []*net.IPNet
-	Verbose       bool
+	CIDRs    map[int]string `koanf:"subnet"`
+	Cooldown time.Duration  `koan:"cooldown" default:"10m"`
+	Timeout  time.Duration  `koanf:"timeout" default:"10s"`
+	Subnets  []*net.IPNet
+	Verbose  bool
 }
 
 const prefix = "ARC_"
@@ -58,8 +56,6 @@ func Get() (*Config, error) {
 				}
 
 				res.Arp.Subnets = snets
-
-				res.Redis.TTL = res.Arp.PollIntervall * 2
 
 				res.Arp.Verbose = res.Verbose
 				res.Redis.Verbose = res.Verbose
