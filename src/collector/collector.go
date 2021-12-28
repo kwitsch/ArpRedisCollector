@@ -13,13 +13,17 @@ import (
 )
 
 type Collector struct {
-	cfg          *config.ArpConfig
-	ctx          context.Context
-	cancel       context.CancelFunc
-	netpacks     []*models.IfNetPack
-	pollInterval *time.Duration
-	reqChannel   chan *net.IP
-	ArpChannel   chan *models.CacheMessage
+	cfg        *config.ArpConfig
+	ctx        context.Context
+	cancel     context.CancelFunc
+	netpacks   []*models.IfNetPack
+	reqChannel chan *resolveRequest
+	ArpChannel chan *models.CacheMessage
+}
+
+type resolveRequest struct {
+	intf *net.Interface
+	ip   *net.IP
 }
 
 func New(cfg *config.ArpConfig) (*Collector, error) {
@@ -32,21 +36,13 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 
 		ctx, cancel := context.WithCancel(context.Background())
 
-		ips := 0
-		for _, n := range nets {
-			ips += len(n.Others)
-		}
-		pi := time.Duration(ips) * cfg.Timeout
-		pi += cfg.Cooldown
-
 		res := &Collector{
-			cfg:          cfg,
-			ctx:          ctx,
-			cancel:       cancel,
-			netpacks:     nets,
-			pollInterval: &pi,
-			reqChannel:   make(chan *net.IP, 10000),
-			ArpChannel:   make(chan *models.CacheMessage, 256),
+			cfg:        cfg,
+			ctx:        ctx,
+			cancel:     cancel,
+			netpacks:   nets,
+			reqChannel: make(chan *resolveRequest, 1000),
+			ArpChannel: make(chan *models.CacheMessage, 256),
 		}
 
 		return res, nil
@@ -71,7 +67,7 @@ func (c *Collector) Start() {
 	c.poll()
 
 	go func() {
-		pollTicker := time.NewTicker(*c.pollInterval).C
+		pollTicker := time.NewTicker(c.cfg.PollIntervall).C
 		for {
 			select {
 			case rr := <-c.reqChannel:
@@ -91,21 +87,34 @@ func (c *Collector) poll() {
 	}
 
 	for _, p := range c.netpacks {
+		c.setSelf(p)
 		for _, ip := range p.Others {
-			c.reqChannel <- ip
+			c.reqChannel <- &resolveRequest{
+				ip:   ip,
+				intf: p.Interface,
+			}
 		}
 	}
 }
 
-func (c *Collector) resolve(ip *net.IP) {
-	addr, _, err := arping.Ping(*ip)
+func (c *Collector) setSelf(p *models.IfNetPack) {
+	c.ArpChannel <- &models.CacheMessage{
+		IP:     p.IP,
+		Mac:    p.Interface.HardwareAddr,
+		Static: true,
+	}
+}
+
+func (c *Collector) resolve(rr *resolveRequest) {
+	addr, _, err := arping.Ping(*rr.ip)
 	if err == nil {
 		c.ArpChannel <- &models.CacheMessage{
-			IP:  ip,
-			Mac: addr,
+			IP:     rr.ip,
+			Mac:    addr,
+			Static: c.cfg.StaticTable,
 		}
 		if c.cfg.Verbose {
-			fmt.Println("Collector poll collected", ip.String(), "=", addr.String())
+			fmt.Println("Collector poll collected", rr.ip.String(), "=", addr.String())
 		}
 	} else {
 		if c.cfg.Verbose {

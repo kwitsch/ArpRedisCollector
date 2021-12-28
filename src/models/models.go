@@ -15,16 +15,19 @@ type CacheMessage struct {
 
 // IfNetPack bundles interface and network information
 type IfNetPack struct {
-	Network *net.IPNet
-	IP      *net.IP
-	Others  []*net.IP
+	Interface *net.Interface
+	Network   *net.IPNet
+	IP        *net.IP
+	Others    []*net.IP
 }
 
 // String returns a string representation of the stack
 // Format: "Interface: %s(%s) | Network: %s | IP: %s | Others: %s,...""
 func (pack IfNetPack) String() string {
-	return fmt.Sprintf("IP: %s | Network: %s | Others: %s,...",
-		pack.IP.String(),
+	return fmt.Sprintf("Interface: %s(%s) | Network: %s | IP: %s | Others: %s,...",
+		pack.Interface.Name,
+		pack.Interface.HardwareAddr.String(),
 		pack.Network.String(),
+		pack.IP.String(),
 		pack.Others[0].String())
 }

@@ -51,5 +51,11 @@ func (c *Client) Close() {
 
 // Publish stores a MACEntry in redis
 func (c *Client) Publish(cm *models.CacheMessage) {
-	c.client.Set(c.ctx, cm.Mac.String(), cm.IP.String(), noTTL)
+	ttl := c.cfg.TTL
+
+	if cm.Static {
+		ttl = noTTL
+	}
+
+	c.client.Set(c.ctx, cm.Mac.String(), cm.IP.String(), ttl)
 }
