@@ -15,14 +15,14 @@ type Config struct {
 }
 
 type RedisConfig struct {
-	Address            string        `koanf:"address"`
-	Username           string        `koanf:"username"`
-	Password           string        `koanf:"password"`
-	Database           int           `koanf:"database" default:"0"`
-	ConnectionAttempts int           `koanf:"connectionAttempts" default:"3"`
-	ConnectionCooldown time.Duration `koanf:"connectionCooldown" default:"1s"`
-	TTL                time.Duration
-	Verbose            bool
+	Address  string        `koanf:"address"`
+	Username string        `koanf:"username"`
+	Password string        `koanf:"password"`
+	Database int           `koanf:"database" default:"0"`
+	Attempts int           `koanf:"attempts" default:"3"`
+	Cooldown time.Duration `koanf:"cooldown" default:"1s"`
+	TTL      time.Duration
+	Verbose  bool
 }
 
 type ArpConfig struct {

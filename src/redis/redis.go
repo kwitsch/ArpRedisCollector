@@ -25,8 +25,8 @@ func New(cfg *config.RedisConfig) (*Client, error) {
 		Username:        cfg.Username,
 		Password:        cfg.Password,
 		DB:              cfg.Database,
-		MaxRetries:      cfg.ConnectionAttempts,
-		MaxRetryBackoff: time.Duration(cfg.ConnectionCooldown),
+		MaxRetries:      cfg.Attempts,
+		MaxRetryBackoff: time.Duration(cfg.Cooldown),
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 
