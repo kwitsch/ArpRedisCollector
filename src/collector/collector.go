@@ -106,7 +106,7 @@ func (c *Collector) resolve(rr *resolveRequest) {
 		c.ArpChannel <- &models.CacheMessage{
 			IP:     rr.ip,
 			Mac:    addr,
-			Static: c.cfg.StaticTable,
+			Static: false,
 		}
 		if c.cfg.Verbose {
 			fmt.Println("Collector poll collected", rr.ip.String(), "=", addr.String())
