@@ -29,6 +29,7 @@ type ArpConfig struct {
 	CIDRs         map[int]string `koanf:"subnet"`
 	PollIntervall time.Duration  `koan:"pollIntervall" default:"10m"`
 	StaticTable   bool           `koanf:"staticTable" default:"false"`
+	Timeout       time.Duration  `koanf:"timeout" default:"5s"`
 	Subnets       []*net.IPNet
 	Verbose       bool
 }

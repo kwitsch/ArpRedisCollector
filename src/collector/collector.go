@@ -32,6 +32,8 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 	}
 	nets, err := arcnet.GetFilteredLocalNets(cfg.Subnets)
 	if err == nil {
+		arping.SetTimeout(cfg.Timeout)
+
 		ctx, cancel := context.WithCancel(context.Background())
 
 		res := &Collector{
@@ -52,6 +54,7 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 func (c *Collector) Close() {
 	close(c.reqChannel)
 	close(c.ArpChannel)
+	c.cancel()
 }
 
 func (c *Collector) Start() {
@@ -71,6 +74,8 @@ func (c *Collector) Start() {
 				c.resolve(rr)
 			case <-pollTicker:
 				c.poll()
+			case <-c.ctx.Done():
+				return
 			}
 		}
 	}()
