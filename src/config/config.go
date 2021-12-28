@@ -59,7 +59,7 @@ func Get() (*Config, error) {
 
 				res.Arp.Subnets = snets
 
-				res.Redis.TTL = res.Arp.PollIntervall * 10
+				res.Redis.TTL = res.Arp.Intervall * 10
 
 				res.Arp.Verbose = res.Verbose
 				res.Redis.Verbose = res.Verbose
