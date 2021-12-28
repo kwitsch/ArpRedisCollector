@@ -107,7 +107,7 @@ func (c *Collector) setSelf(h *NetHandler) {
 	c.ArpChannel <- &models.CacheMessage{
 		IP:     h.ifNet.IP,
 		Mac:    h.client.HardwareAddr(),
-		Static: true,
+		Static: c.cfg.StaticTable,
 	}
 }
 
@@ -118,7 +118,7 @@ func (c *Collector) resolve(rr *resolveRequest) {
 		c.ArpChannel <- &models.CacheMessage{
 			IP:     rr.ip,
 			Mac:    addr,
-			Static: false,
+			Static: c.cfg.StaticTable,
 		}
 		if c.cfg.Verbose {
 			fmt.Println("Collector poll collected", rr.ip.String(), "=", addr.String())
