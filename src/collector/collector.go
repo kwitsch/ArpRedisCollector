@@ -112,7 +112,7 @@ func (c *Collector) setSelf(h *NetHandler) {
 }
 
 func (c *Collector) resolve(rr *resolveRequest) {
-	rr.client.SetDeadline(time.Now().Add(time.Second * 5))
+	rr.client.SetDeadline(time.Now().Add(c.cfg.Timeout))
 	addr, err := rr.client.Resolve(*rr.ip)
 	if err == nil {
 		c.ArpChannel <- &models.CacheMessage{
