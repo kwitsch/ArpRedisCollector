@@ -71,12 +71,13 @@ func (c *Collector) Close() {
 }
 
 func (c *Collector) Start() {
-	fmt.Println("Collector Start for:")
-
 	if c.cfg.Verbose {
+		fmt.Println("Collector Start for:")
 		for _, h := range c.nethandlers {
 			fmt.Println("-", h.ifNet.String())
 		}
+	} else {
+		fmt.Println("Collector Start")
 	}
 
 	c.poll()
@@ -89,8 +90,9 @@ func (c *Collector) Start() {
 				c.resolve(rr)
 			case <-pollTicker:
 				c.poll()
-			case <-c.ctx.Done():
-				return
+				//case <-c.ctx.Done():
+				//	fmt.Println("Collector Close")
+				//	return
 			}
 		}
 	}()
