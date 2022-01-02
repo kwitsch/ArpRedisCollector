@@ -3,17 +3,16 @@
 Periodically fetches arp entries and stores them in a redis database.  
 All settings are configured through environment variables.
 
----
 
 ## Settings
 
 !!! CAP_NET_ADMIN is needed for ARP requests !!!
-<br><br>
+
 ### Required
 
 * ARC_REDIS_ADDRESS = redis server address
-* ARC_ARP_SUBNET_1 = Network filter  
-<br>
+* ARC_ARP_SUBNET_1 = network filter
+
 ### Overview
 
 | Name                | Type    | Default | Description |
@@ -29,8 +28,7 @@ All settings are configured through environment variables.
 | ARC_ARP_TIMEOUT     | duration | 200ms | Timeout for ARP requests |
 | ARC_ARP_STATICTABLE | bool     | False | Disables redis TTLs |
 | ARC_ARP_SUBNET_n    | string   |       | CIDR list as network filter (n = number of list entry)|
-<br>
----
+
 
 ## Docker stack example
 
