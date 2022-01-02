@@ -54,7 +54,7 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 				cancel:      cancel,
 				nethandlers: handlers,
 				polldur:     (time.Duration(ic) * cfg.Timeout) + cfg.Intervall,
-				reqChannel:  make(chan *resolveRequest, 1000),
+				reqChannel:  make(chan *resolveRequest, 10000),
 				ArpChannel:  make(chan *models.CacheMessage, 256),
 			}
 
@@ -84,7 +84,7 @@ func (c *Collector) Start() {
 		fmt.Println("Collector Start")
 	}
 
-	c.poll()
+	go c.poll()
 
 	go func() {
 		pollTicker := time.NewTicker(c.polldur).C
