@@ -44,6 +44,9 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 			for _, h := range handlers {
 				ic += len(h.ifNet.Others)
 			}
+			if cfg.Verbose {
+				fmt.Println("Collector created for", ic, "addresses")
+			}
 
 			res := &Collector{
 				cfg:         cfg,
@@ -51,7 +54,7 @@ func New(cfg *config.ArpConfig) (*Collector, error) {
 				cancel:      cancel,
 				nethandlers: handlers,
 				polldur:     (time.Duration(ic) * cfg.Timeout) + cfg.Intervall,
-				reqChannel:  make(chan *resolveRequest, 1000),
+				reqChannel:  make(chan *resolveRequest, 10000),
 				ArpChannel:  make(chan *models.CacheMessage, 256),
 			}
 
@@ -71,15 +74,17 @@ func (c *Collector) Close() {
 }
 
 func (c *Collector) Start() {
-	fmt.Println("Collector Start for:")
-
 	if c.cfg.Verbose {
+		fmt.Println("Collector Start for:")
 		for _, h := range c.nethandlers {
 			fmt.Println("-", h.ifNet.String())
 		}
+		fmt.Println("Polltimer:", c.polldur.String())
+	} else {
+		fmt.Println("Collector Start")
 	}
 
-	c.poll()
+	go c.poll()
 
 	go func() {
 		pollTicker := time.NewTicker(c.polldur).C
@@ -90,6 +95,7 @@ func (c *Collector) Start() {
 			case <-pollTicker:
 				c.poll()
 			case <-c.ctx.Done():
+				fmt.Println("Collector Close")
 				return
 			}
 		}
@@ -119,14 +125,17 @@ func (c *Collector) setSelf(h *NetHandler) {
 }
 
 func (c *Collector) resolve(rr *resolveRequest) {
+	if c.cfg.Verbose {
+		fmt.Println("Resolve", rr.ip.String())
+	}
 	rr.client.SetDeadline(time.Now().Add(c.cfg.Timeout))
 	addr, err := rr.client.Resolve(*rr.ip)
 	if err == nil {
 		c.publish(rr.ip, addr)
-		fmt.Println("Collector poll", rr.ip.String(), "=", addr.String())
+		fmt.Println(rr.ip.String(), "=", addr.String())
 	} else {
 		if c.cfg.Verbose {
-			fmt.Println("Collector", rr.ip.String(), err)
+			fmt.Println(err)
 		}
 	}
 }
