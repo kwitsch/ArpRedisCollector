@@ -30,5 +30,5 @@ require (
 	github.com/mdlayher/raw v0.0.0-20211126142749-4eae47f3d54b // indirect
 	github.com/onsi/gomega v1.17.0
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
-	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
+	golang.org/x/sys v0.1.0 // indirect
 )
